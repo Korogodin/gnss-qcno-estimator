@@ -32,6 +32,18 @@ plot_fail_counter(handles);
 allow_stdn2_est = (fscanf(fid, '%d', K))';
 plot_allow_stdn2_est(handles);
 
+R2 = (fscanf(fid, '%u', K))';
+plot_R2(handles);
+
+R4 = (fscanf(fid, '%ul', K))';
+plot_R4(handles);
+
+R2_acum = (fscanf(fid, '%u', K))';
+plot_R2_acum(handles);
+
+R4_acum = (fscanf(fid, '%ul', K))';
+plot_R4_acum(handles);
+
 fclose(fid);
 
 end

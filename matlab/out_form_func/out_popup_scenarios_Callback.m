@@ -38,6 +38,12 @@ acum_counter = nan(1, K);
 fail_counter = nan(1, K);
 allow_stdn2_est = nan(1, K);
 
+R2 = nan(1, K);
+R4 = nan(1, K);
+R2_acum = nan(1, K);
+R4_acum = nan(1, K);
+
+
 % // Description area
 set(handles.ed_Description, 'String', Description); 
 
@@ -73,5 +79,11 @@ plot_fail_counter(handles);
 
 % // Plot allow_stdn2_est
 plot_allow_stdn2_est(handles);
+
+plot_R2(handles);
+plot_R4(handles);
+plot_R2_acum(handles);
+plot_R4_acum(handles);
+
 end
 
