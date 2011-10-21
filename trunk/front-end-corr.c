@@ -54,8 +54,9 @@ int main(void)
 
 
     int x_A2_est[K], x_A_est[K], x_stdn2_est[K], rough_qcno_dBHz[K];
-    int sum_counter[K], acum_counter[K];
 
+    int* sum_counter = (int *)malloc(sizeof(int) * K);
+    int* acum_counter = (int *)malloc(sizeof(int) * K);
     int* fail_counter = (int *)malloc(sizeof(int) * K);
     int* allow_stnd2_est = (int *)malloc(sizeof(int) * K);
 
@@ -117,6 +118,8 @@ int main(void)
     	fprintf(fid_out, "%d\n", allow_stnd2_est[i]);
     }
 
+    free(acum_counter);
+    free(sum_counter);
     free(fail_counter);
     free(allow_stnd2_est);
 
