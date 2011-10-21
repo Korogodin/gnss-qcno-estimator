@@ -7,3 +7,4 @@ global A_IQ A_IQ_eff Tc EpsW stdn_IQ
 
 global qcno_est sqrtA_IQ2_est A_IQ_est stdn2_IQ_est
 global sum_counter acum_counter fail_counter allow_stdn2_est
+global R2 R4 R2_acum R4_acum

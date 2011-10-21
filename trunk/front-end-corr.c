@@ -60,6 +60,11 @@ int main(void)
     int* fail_counter = (int *)malloc(sizeof(int) * K);
     int* allow_stnd2_est = (int *)malloc(sizeof(int) * K);
 
+    unsigned int* R2 = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    unsigned long int* R4 = (unsigned long int *)malloc(sizeof(unsigned long int) * K);
+    unsigned int* R2_acum = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    unsigned long int* R4_acum = (unsigned long int *)malloc(sizeof(unsigned long int) * K);
+
     // Имитация потока исполнения
     int k;
     PowerMeasure_struct PoMe;
@@ -79,6 +84,10 @@ int main(void)
 		acum_counter[k] = (int)(PoMe.acum_counter);
 		fail_counter[k] = (int)(PoMe.fail_counter);
 		allow_stnd2_est[k] = (int)(PoMe.allow_stnd2_est);
+		R2[k] = PoMe.R2;
+		R4[k] = PoMe.R4;
+		R2_acum[k] = PoMe.R2_acum;
+		R4_acum[k] = PoMe.R4_acum;
 //    	printf("PoMe.fail_counter = %d\n", fail_counter[k]);
     }
 
@@ -117,11 +126,29 @@ int main(void)
     for (i=0; i<K; i++){
     	fprintf(fid_out, "%d\n", allow_stnd2_est[i]);
     }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%u\n", R2[i]);
+    }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%ul\n", R4[i]);
+    }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%u\n", R2_acum[i]);
+    }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%ul\n", R4_acum[i]);
+    }
+
 
     free(acum_counter);
     free(sum_counter);
     free(fail_counter);
     free(allow_stnd2_est);
+
+    free(R2);
+    free(R4);
+    free(R2_acum);
+    free(R4_acum);
 
     fclose(fid_out);
 

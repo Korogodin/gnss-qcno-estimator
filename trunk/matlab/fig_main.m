@@ -22,7 +22,7 @@ function varargout = fig_main(varargin)
 
 % Edit the above text to modify the response to help fig_main
 
-% Last Modified by GUIDE v2.5 21-Oct-2011 16:12:11
+% Last Modified by GUIDE v2.5 21-Oct-2011 16:50:57
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -326,3 +326,32 @@ function pb_axes_fail_counter_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 plot_fail_counter(0);
+
+
+% --- Executes on button press in pb_axes_R2.
+function pb_axes_R2_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_axes_R2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+plot_R2(0);
+
+% --- Executes on button press in pb_axes_R4.
+function pb_axes_R4_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_axes_R4 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+plot_R4(0);
+
+% --- Executes on button press in pb_axes_R2_acum.
+function pb_axes_R2_acum_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_axes_R2_acum (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+plot_R2_acum(0);
+
+% --- Executes on button press in pb_axes_R4_acum.
+function pb_axes_R4_acum_Callback(hObject, eventdata, handles)
+% hObject    handle to pb_axes_R4_acum (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+plot_R4_acum(0);
