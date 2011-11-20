@@ -64,6 +64,9 @@ int main(void)
     unsigned long int* R4 = (unsigned long int *)malloc(sizeof(unsigned long int) * K);
     unsigned int* R2_acum = (unsigned int *)malloc(sizeof(unsigned int) * K);
     unsigned long int* R4_acum = (unsigned long int *)malloc(sizeof(unsigned long int) * K);
+    unsigned int* start_counter = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    unsigned int* IQ_Power = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    unsigned char* N_Coher = (unsigned char *)malloc(sizeof(unsigned char) * K);
 
     // Имитация потока исполнения
     int k;
@@ -71,14 +74,26 @@ int main(void)
 
     InitPowerMeasure(&(PoMe), 0);
     unsigned int U2;
+    unsigned int nN = 1;
+    int Icoh = 0, Qcoh = 0;
     for (k=0; k<K; k++){
-    	U2 = I[k]*I[k] + Q[k]*Q[k];
-    	AccumPowerMeasure(&(PoMe), U2);
-		if (PoMe.Accumulators_are_ready != 0)
-			DoPowerMeasure(&(PoMe));
-		x_A2_est[k] = PoMe.x_A2_est[0];
-		x_A_est[k] = PoMe.x_A_est;
-		x_stdn2_est[k] = PoMe.x_stdn2_est;
+    	Icoh = Icoh + I[k];
+    	Qcoh = Qcoh + Q[k];
+    	if (nN == PoMe.N_Coher){
+    		U2 = Icoh*Icoh + Qcoh*Qcoh;
+    		U2 >>= U2_SHIFT;
+    		U2 /= PoMe.N_Coher; // Для сохранения квадрата
+			AccumPowerMeasure(&(PoMe), U2);
+			if (PoMe.Accumulators_are_ready != 0)
+				DoPowerMeasure(&(PoMe));
+			nN = 0;
+			Icoh = 0;
+			Qcoh = 0;
+    	}
+    	nN++;
+		x_A2_est[k] = PoMe.A_IQ_2_est;
+		x_A_est[k] = PoMe.A_IQ_est;
+		x_stdn2_est[k] = PoMe.stdn_IQ_2_est;
 		rough_qcno_dBHz[k] = PoMe.rough_qcno_dBHz;
 		sum_counter[k] = (int)(PoMe.sum_counter);
 		acum_counter[k] = (int)(PoMe.acum_counter);
@@ -88,7 +103,9 @@ int main(void)
 		R4[k] = PoMe.R4;
 		R2_acum[k] = PoMe.R2_acum;
 		R4_acum[k] = PoMe.R4_acum;
-//    	printf("PoMe.fail_counter = %d\n", fail_counter[k]);
+		start_counter[k] = PoMe.start_counter;
+		IQ_Power[k] = PoMe.IQ_Power;
+		N_Coher[k] = PoMe.N_Coher;
     }
 
     // Запись результатов в файл
@@ -138,6 +155,15 @@ int main(void)
     for (i=0; i<K; i++){
     	fprintf(fid_out, "%ul\n", R4_acum[i]);
     }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%u\n", start_counter[i]);
+    }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%u\n", IQ_Power[i]);
+    }
+    for (i=0; i<K; i++){
+    	fprintf(fid_out, "%u\n", N_Coher[i]);
+    }
 
 
     free(acum_counter);
@@ -149,6 +175,10 @@ int main(void)
     free(R4);
     free(R2_acum);
     free(R4_acum);
+
+    free(start_counter);
+    free(IQ_Power);
+    free(N_Coher);
 
     fclose(fid_out);
 

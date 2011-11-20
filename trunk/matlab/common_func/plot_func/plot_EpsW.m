@@ -13,8 +13,8 @@ else
 end
 
 
-plot(hA, 1:K, EpsW);
-ylabel(hA, 'EpsW, rad/s');
+plot(hA, 1:K, EpsW/2/pi);
+ylabel(hA, 'EpsW, Hz');
 set(hA,'XGrid','on','YGrid','on')
 
 if isstruct(handles)
