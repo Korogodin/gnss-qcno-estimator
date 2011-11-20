@@ -44,6 +44,13 @@ plot_R2_acum(handles);
 R4_acum = (fscanf(fid, '%ul', K))';
 plot_R4_acum(handles);
 
+start_counter = (fscanf(fid, '%u', K))';
+% plot_start_counter(handles);
+
+IQ_Power = (fscanf(fid, '%u', K))';
+
+N_Coher = (fscanf(fid, '%u', K))';
+
 fclose(fid);
 
 end

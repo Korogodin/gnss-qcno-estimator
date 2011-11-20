@@ -43,6 +43,7 @@ R4 = nan(1, K);
 R2_acum = nan(1, K);
 R4_acum = nan(1, K);
 
+start_counter = nan(1, K);
 
 % // Description area
 set(handles.ed_Description, 'String', Description); 

@@ -27,9 +27,11 @@ void RoughCalc_qcno_dBHz_PowerMeasure(PowerMeasure_struct *PoMe);
 */
 void InitPowerMeasure(PowerMeasure_struct * PoMe, quint32 Init_qcno)
 {
-	PoMe->x_A2_est[0] = (1<<PoMe_NoiseU2Bit_shifted<<5);
-
+	PoMe->x_A2_est[0] = (1<<PoMe_NoiseU2Bit_shifted<<5); // Изначально считаем, что мощность сигнала на
 	PoMe->x_stdn2_est = (1<<PoMe_NoiseU2Bit_shifted); // Для первого порядка совпадает с экстраполяцией
+
+	CalcTrueValues_PowerMeasure(PoMe); // Учет U2_SHIFT
+
 	PoMe->x_stdn2_est_shifted = (PoMe->x_stdn2_est << PoMe_x_stdn2_shift);
 	PoMe->allow_stnd2_est = 1; // Разрешить оценивать и фильтровать дисперсию квадратур
 
@@ -39,11 +41,18 @@ void InitPowerMeasure(PowerMeasure_struct * PoMe, quint32 Init_qcno)
 	PoMe->acum_counter = 0; // Счетчик второго уровня накопителя корреляционных сумм
 	PoMe->sum_counter = 0; // Счетчик первого уровня накопителя корреляционных сумм
 
+	PoMe->sum_counter_max = 128; // Счетчик первого уровня накопителя корреляционных сумм
+	/* sum_counter_max задает дискрет времени некогерентного накопления
+	 * за sum_counter_max суммирований не должны переполнится аккумуляторы R2 и R4
+	 */
+
 	PoMe->fail_counter = 0; // Счетчик подряд идущих фейлов измерений
 
 	PoMe->start_counter = 0; // Счетчик тиков фильтра СКО от разрешения, доходит до (obr_Kf_stdn_0+задержка) и застывает
 
 	PoMe->acum_threshold_lock = 0;
+
+	PoMe->N_Coher = 20;
 
 #if (RECEIVER_TYPE == RECEIVER_ALPACA)
 	if (Init_qcno > 0)
@@ -78,7 +87,7 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 	qint64 tmp64_1, tmp64_2, tmp64_3;
 	quint32 tmpu32_2, Diskrimi_shift;
 
-	/* Division by acum_counter */
+	/* Division of accumulated sums by acum_counter */
 	int clz=31-__CLZ(PoMe->Accumulators_are_ready);
 	if((1<<clz)==PoMe->Accumulators_are_ready)
 	{
@@ -104,16 +113,16 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 	M = (tmp64_1&0xFFFFFFFF);
 	Diskrimi =  ((tmp64_2 >> Diskrimi_shift)&0xFFFFFFFF);
 	PoMe->Accumulators_are_ready = 0;
-	PoMe->IQ_Power = M;
+	PoMe->IQ_Power = M; // I^2 + Q^2
 
 	/* Измерение квадрата амплитуды */
-	if (M > 2*PoMe->x_stdn2_est){
-		SQ_A_izm =  M - 2*PoMe->x_stdn2_est;
+	if (M > 2*PoMe->x_stdn2_est){ // Common Power > Noise Power
+		SQ_A_izm =  M - 2*PoMe->x_stdn2_est; // A_IQ^2 measurement
 		PoMe->fail_counter = 0;
 	}
-	else {
+	else { // Common Power less then Noise Power
 		PoMe->fail_counter++;
-		if (PoMe->x_A2_est[0] > (1<<PoMe_NoiseU2Bit_shifted) ) SQ_A_izm = (1<<PoMe_NoiseU2Bit_shifted);
+		if (PoMe->x_A2_est[0] > (1<<PoMe_NoiseU2Bit_shifted) ) SQ_A_izm = (1<<PoMe_NoiseU2Bit_shifted); // A_IQ^2 measurement equally a priori Noise Power
 		else SQ_A_izm =  PoMe->x_A2_est[0] - PoMe->x_A2_est[0]/2; //0.05*(0 - PoMe->x_A2_est[0]);
 	}
 	/***/
@@ -121,8 +130,6 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 
 	/* Фильтр амплитуды и её квадрата */
 	PoMe->x_A2_est[0] = SQ_A_izm;
-	PoMe->x_A_est = sqrt_PoMe( PoMe->x_A2_est[0] );
-	/***/
 
 	if (PoMe->allow_stnd2_est == 1){
 		quint32 tmp;
@@ -163,7 +170,9 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 
 	} // if (PoMe->allow_stnd2_est == 1)
 
-	RoughCalc_qcno_dBHz_PowerMeasure(PoMe);
+	CalcTrueValues_PowerMeasure(PoMe); // Учет U2_SHIFT
+	RoughCalc_qcno_dBHz_PowerMeasure(PoMe);// Грубое вычисление отношения с/ш
+
 #if (RECEIVER_TYPE == RECEIVER_ALPACA)
 	PoMe->SQ_A_izm = SQ_A_izm;
 	PoMe->SQ_stdn_izm = SQ_stdn_izm;
@@ -230,112 +239,145 @@ void SetAccumThreshold(PowerMeasure_struct *PoMe){
  - первый: накопление PoMe_sum_counter_max величин U2, результат - детектор мощности
  - второй: накопление acum_threshold сумм первого уровня
 @param PoMe - указатель на структуру данных блока оценки с/ш
-@param U2 - сумма квадратов корреляционных сумм \f$U2 = I_k^2 + Q_k^2\f$
+@param U2 - сдвинутая сумма квадратов корреляционных сумм \f$U2 = (I_k^2 + Q_k^2)>>U2_SHIFT\f$
 */
 void AccumPowerMeasure(PowerMeasure_struct *PoMe, quint32 U2){
 
-  quint64 tmpu64;
-  quint32 tmpu32;
-  int overflow_F_ = 0;
-  PoMe->sum_counter++;  if (PoMe->sum_counter == PoMe_sum_counter_max) PoMe->sum_counter = 0;
+	quint64 tmpu64;
+	quint32 tmpu32;
+	int overflow_F_ = 0;
 
-  tmpu32 = PoMe->R2 + U2;
-  if (PoMe->R2 <= tmpu32) // overflow defense
-    PoMe->R2 = tmpu32; // sum I^2 + Q^2
-  else{ // impossible, if PoMe_sum_counter_max and U2_SHIFT are correct
-    PoMe->R2 = U2;
-    overflow_F_ = 1;
-  }
+	// PoMe_sum_counter_max - размер первичного некогерентного накопления (до сдвига)
+	PoMe->sum_counter++;  if (PoMe->sum_counter == PoMe->sum_counter_max) PoMe->sum_counter = 0;
 
-  tmpu64 = PoMe->R4 + (quint64)(U2) * (quint64)(U2);
-  if ( (PoMe->R4 <= tmpu64) & (overflow_F_ == 0) ) // overflow defense
-    PoMe->R4 = tmpu64; //  sum (I^2 + Q^2)^2
-  else{ // impossible, if PoMe_sum_counter_max and U2_SHIFT are correct
-    PoMe->R4 = (quint64)(U2) * (quint64)(U2);
-  }
+	/* Накопление первичных аккумуляторов sum_counter_max раз. При переполнении сбрасываем старое (аномальное поведение!). */
+	/*  Если n = PoMe_NoiseU2Bit_shifted; m = log2(sum_counter_max)
+	 *	Максимальное значение 1ms (I^2+Q^2)>>U2_SHIFT:  ~ 2^(n+8)  (где 8 = ceil(log2(200)), а 200 = 50дБГц * 0.001 с)
+	 *  Максимальное значение K ms для 50 дБГц: ~ 2^(n+8+k)  (где k = ceil(log2(K)), 20мс - максимальное ког. накопление -> K=5)
+	 *  Максимальное значение R2: ~ 2^(n+8+k+m)
+	 *  Максимальное значение R4: ~ 2^(2n+16+2k+m)
+	 *  Отсюда требование к n, m и k:
+	 *  n + m <= 24
+	 *  2n + 2k m <= 48
+	 *  Например, при n = 6, k=5: m <= 13; m <= 24 -> максимальный sum_counter_max = 8192
+	 */
 
-  if (PoMe->sum_counter == (PoMe_sum_counter_max - 1) )
-  {
-    quint64 tmpu64_1, tmpu64_2;
-    quint32 tmpu32_1, tmpu32_2;
-    if (overflow_F_ == 0){
-		tmpu64_1 = PoMe->R4 / PoMe_sum_counter_max;
-		tmpu32_1 = PoMe->R2 / PoMe_sum_counter_max;
-    } else {
-		tmpu64_1 = PoMe->R4;
-		tmpu32_1 = PoMe->R2;
-    }
-    PoMe->R2 = 0;
-    PoMe->R4 = 0;
-
-    tmpu64_2 = PoMe->R4_acum + tmpu64_1;
-    tmpu32_2 = PoMe->R2_acum + tmpu32_1;
-
-    if ( (PoMe->R4_acum <= tmpu64_2)&(PoMe->R2_acum <= tmpu32_2)&(overflow_F_ == 0) ){ // Переполнения нет
-      PoMe->R4_acum = tmpu64_2;
-      PoMe->R2_acum = tmpu32_2;
-      PoMe->acum_counter++;
-    }else if ( (tmpu64_1 > PoMe->R4_acum)||(tmpu32_1 > PoMe->R2_acum)||(overflow_F_ == 0) ){
-      // impossible, if PoMe_sum_counter_max, U2_SHIFT and max[threshold] are correct
-      overflow_F_ = 1;
-      PoMe->R4_acum = tmpu64_1; // А раз оно такое большое, то будем по нему и работать
-      PoMe->R2_acum = tmpu32_1;
-      PoMe->acum_counter = 1;
-    }else {  // Штатное переполнение по капле: где-то что-то мы проворонили
-      overflow_F_ = 1; // Надеяться и ждать, что сейчас всё пучком пройдет)
-    }
-
-    // *********** Threshold setting **********************
-    tmpu32_2 = 32 - __CLZ(tmpu32_1); // Num of ones in E[U2]
-    if ( tmpu32_2 > (PoMe_NoiseU2Bit_shifted + 8) ){  // Power >> Noise Power
-      PoMe->acum_threshold_level = 5;
-    }else if ( tmpu32_2 > (PoMe_NoiseU2Bit_shifted + 4) ){
-      PoMe->acum_threshold_level = 4;
-    }else if ( tmpu32_2 > (PoMe_NoiseU2Bit_shifted+2) ){
-      PoMe->acum_threshold_level = 3;
-    }else
-      if ( (PoMe->x_A2_est[0])>>(PoMe_NoiseU2Bit_shifted-1)){
-      PoMe->acum_threshold_level = 2;
-      }else{
-	PoMe->acum_threshold_level = 1;
-      }
-    if (PoMe->acum_counter == 1) PoMe->acum_threshold_level_first = PoMe->acum_threshold_level;
-
-
-    if ((PoMe->acum_threshold_level - PoMe->acum_threshold_level_first) > 1){ // Up
-      PoMe->acum_threshold_lock = 1;
-      SetAccumThreshold(PoMe);
-      PoMe->R4_acum = tmpu64_1; // Old data so old
-      PoMe->R2_acum = tmpu32_1;
-      PoMe->acum_counter = 1;
-      PoMe->acum_threshold_level_first = PoMe->acum_threshold_level; // One second or more
-      if (PoMe->acum_threshold_level_first > 3)
-	PoMe->acum_threshold =  1;
-      else if (PoMe->acum_threshold_level_first == 3)
-	PoMe->acum_threshold =  2;
-      else
-	PoMe->acum_threshold =  4;
-    }else if ( (PoMe->acum_threshold_level_first - PoMe->acum_threshold_level) > 1){// Down
-	if (PoMe->acum_threshold_lock == 0){
-	  PoMe->R4_acum = tmpu64_1; // Old data so old
-	  PoMe->R2_acum = tmpu32_1;
-	  PoMe->acum_counter = 1;
-	  PoMe->acum_threshold_level_first = PoMe->acum_threshold_level;
-	  PoMe->acum_threshold_lock = 1;
-	  PoMe->acum_threshold =  (1024 / PoMe_sum_counter_max); 	// One second
+	tmpu32 = PoMe->R2 + U2;
+	if (PoMe->R2 <= tmpu32) // overflow defense
+		PoMe->R2 = tmpu32; // sum (U2)
+	else{ // impossible, if PoMe_sum_counter_max and U2_SHIFT are correct
+		overflow_F_ = 1;
 	}
-    }else
-      if ( (PoMe->acum_threshold_lock == 0) & (PoMe->acum_counter == 1) )
-	SetAccumThreshold(PoMe);
-      //PoMe->acum_threshold=8;
 
-    if ( (PoMe->acum_counter >= PoMe->acum_threshold) // Превысили порог накопления для текущего qcno
-              || (overflow_F_) // Overflow in R2_acum or R4_acum
-       ){
-      PoMe->Accumulators_are_ready = PoMe->acum_counter; 	PoMe->acum_counter = 0;
-      PoMe->R4_acum_copy = PoMe->R4_acum; 			PoMe->R4_acum = 0;
-      PoMe->R2_acum_copy = PoMe->R2_acum;			PoMe->R2_acum = 0;
-    }
+	tmpu64 = PoMe->R4 + (quint64)(U2) * (quint64)(U2);
+	if ( (PoMe->R4 <= tmpu64) & (overflow_F_ == 0) ) // overflow defense
+		PoMe->R4 = tmpu64; //  sum (U2)^2
+	else{ // impossible, if PoMe_sum_counter_max and U2_SHIFT are correct
+		PoMe->R4 = (quint64)(U2) * (quint64)(U2);
+		PoMe->R2 = U2;
+		overflow_F_ = 1;
+	}
+	/***************/
+
+
+	if (PoMe->sum_counter == (PoMe->sum_counter_max - 1) )
+	{
+		quint64 tmpu64_1, tmpu64_2;
+		quint32 tmpu32_1, tmpu32_2;
+		if (overflow_F_ == 0){
+			tmpu64_1 = PoMe->R4 / PoMe->sum_counter_max; // Компилятор заменит сдвигом
+			tmpu32_1 = PoMe->R2 / PoMe->sum_counter_max;
+		} else { // Аномальное поведение
+			tmpu64_1 = PoMe->R4;
+			tmpu32_1 = PoMe->R2;
+			#ifdef POME_TESTBENCH
+				printf("Overflow in first acum\n");
+			#endif
+		}
+		PoMe->R2 = 0;
+		PoMe->R4 = 0;
+
+
+		/********** Накопление вторичных некогерентных аккумуляторов ************************************/
+		tmpu64_2 = PoMe->R4_acum + tmpu64_1;
+		tmpu32_2 = PoMe->R2_acum + tmpu32_1;
+
+		if ( (PoMe->R4_acum <= tmpu64_2)&(PoMe->R2_acum <= tmpu32_2)&(overflow_F_ == 0) ){ // Переполнения нет
+			PoMe->R4_acum = tmpu64_2;
+			PoMe->R2_acum = tmpu32_2;
+			PoMe->acum_counter++;
+		}else if ( (tmpu64_1 > PoMe->R4_acum)||(tmpu32_1 > PoMe->R2_acum)||(overflow_F_ == 0) ){
+		// impossible, if PoMe_sum_counter_max, U2_SHIFT and max[threshold] are correct
+			overflow_F_ = 1;
+			PoMe->R4_acum = tmpu64_1; // А раз оно такое большое, то будем по нему и работать
+			PoMe->R2_acum = tmpu32_1;
+			PoMe->acum_counter = 1;
+			#ifdef POME_TESTBENCH
+				printf("Overflow in second acum\n");
+			#endif
+		}else {  // Штатное переполнение по капле: где-то что-то мы проворонили
+			#ifdef POME_TESTBENCH
+				if (overflow_F_ == 0)
+					printf("Overflow in second acum, but not in first\n");
+			#endif
+			overflow_F_ = 1; // Надеяться и ждать, что сейчас всё пучком пройдет)
+		}
+		/**************************************************************************************************/
+
+
+
+		/********************** Threshold setting ****************************/
+		tmpu32_2 = 32 - __CLZ(tmpu32_1); // Num of ones in E[U2]
+		if ( tmpu32_2 > (PoMe_NoiseU2Bit_shifted + 6) ){  // Power >> Noise Power
+			PoMe->acum_threshold_level = 5;
+		}else if ( tmpu32_2 > (PoMe_NoiseU2Bit_shifted + 4) ){
+			PoMe->acum_threshold_level = 4;
+		}else if ( tmpu32_2 > (PoMe_NoiseU2Bit_shifted + 2) ){
+			PoMe->acum_threshold_level = 3;
+		}else
+			if ( (PoMe->x_A2_est[0])>>(PoMe_NoiseU2Bit_shifted-1)){
+				PoMe->acum_threshold_level = 2;
+			}else{
+				PoMe->acum_threshold_level = 1;
+			}
+		if (PoMe->acum_counter == 1) PoMe->acum_threshold_level_first = PoMe->acum_threshold_level;
+		/**********************************************************************/
+
+
+		if ((PoMe->acum_threshold_level - PoMe->acum_threshold_level_first) > 1){ // Up
+			PoMe->acum_threshold_lock = 1;
+			SetAccumThreshold(PoMe);
+			PoMe->R4_acum = tmpu64_1; // Old data so old
+			PoMe->R2_acum = tmpu32_1;
+			PoMe->acum_counter = 1;
+			PoMe->acum_threshold_level_first = PoMe->acum_threshold_level; // One second or more
+			if (PoMe->acum_threshold_level_first > 3)
+				PoMe->acum_threshold =  1;
+			else if (PoMe->acum_threshold_level_first == 3)
+				PoMe->acum_threshold =  2;
+			else
+				PoMe->acum_threshold =  4;
+		}else if ( (PoMe->acum_threshold_level_first - PoMe->acum_threshold_level) > 1){// Down
+			if (PoMe->acum_threshold_lock == 0){
+			PoMe->R4_acum = tmpu64_1; // Old data so old
+			PoMe->R2_acum = tmpu32_1;
+			PoMe->acum_counter = 1;
+			PoMe->acum_threshold_level_first = PoMe->acum_threshold_level;
+			PoMe->acum_threshold_lock = 1;
+			PoMe->acum_threshold =  (1024 / PoMe->sum_counter_max); 	// One second
+			}
+		}else
+			if ( (PoMe->acum_threshold_lock == 0) & (PoMe->acum_counter == 1) )
+				SetAccumThreshold(PoMe);
+			//PoMe->acum_threshold=8;
+
+		if ( (PoMe->acum_counter >= PoMe->acum_threshold) // Превысили порог накопления для текущего qcno
+				  || (overflow_F_) // Overflow in R2_acum or R4_acum
+		   ){
+			PoMe->Accumulators_are_ready = PoMe->acum_counter; 	PoMe->acum_counter = 0;
+			PoMe->R4_acum_copy = PoMe->R4_acum; 			PoMe->R4_acum = 0;
+			PoMe->R2_acum_copy = PoMe->R2_acum;			PoMe->R2_acum = 0;
+		}
 
   }
 
@@ -377,8 +419,17 @@ void AllowVariancePowerMeasure(PowerMeasure_struct *PoMe){
 */
 void RoughCalc_qcno_dBHz_PowerMeasure(PowerMeasure_struct *PoMe){
 	int tmp;
-	tmp = __CLZ(PoMe->x_stdn2_est) - __CLZ(PoMe->x_A2_est[0]); // "На сколько по 3дБ амплитуда2 больше СКО2"
+	tmp = __CLZ(PoMe->stdn_IQ_2_est) - __CLZ(PoMe->A_IQ_2_est); // "На сколько по 3дБ амплитуда2 больше СКО2"
 	PoMe->rough_qcno_dBHz = 27 + 3*tmp; // При 27 дБГц амплитуда и СКО квадратур практически равны
+//	switch (PoMe->N_Coher){
+//	case 1:
+//		break;
+//	case 20:
+////		PoMe->rough_qcno_dBHz -= 13;
+//	    break;
+//	default:
+//		break;
+//	}
 }
 
 
@@ -484,4 +535,19 @@ quint32 NearestPower2(quint32 x){//// Ближайшее большее или �
 			return i;   // и будет ответом
 	}
 	return 0;
+}
+
+/**
+Алгоритмы оперируют сдвинутыми на U2_SHIFT суммами квадратов 1мс квадратур. Это приводит к тому,
+что оценки дисперсии и квадрата амплитуды сами оказываются сдвинутыми на U2_SHIFT. Данная
+функция производит обратный сдвиг и записывает результат в соответсвующие переменные
+@param PoMe - указатель на структуру данных блока оценки с/ш
+*/
+void CalcTrueValues_PowerMeasure(PowerMeasure_struct *PoMe){
+
+	PoMe->A_IQ_2_est = (PoMe->x_A2_est[0] << U2_SHIFT)/ PoMe->N_Coher;
+//	PoMe->A_IQ_2_est = (PoMe->x_A2_est[0] << U2_SHIFT);
+	PoMe->A_IQ_est = sqrt_PoMe( PoMe->A_IQ_2_est );
+	PoMe->stdn_IQ_2_est = PoMe->x_stdn2_est << U2_SHIFT;
+
 }
