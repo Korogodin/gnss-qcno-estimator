@@ -15,6 +15,7 @@ A_IQ_est = (fscanf(fid, '%d', K))';
 plot_A_IQ(handles);
 
 stdn2_IQ_est = (fscanf(fid, '%d', K))';
+stdn2_IQ_est_shifted = (fscanf(fid, '%d', K))';
 plot_stdn_IQ(handles);
 
 qcno_est = (fscanf(fid, '%d', K))';

@@ -5,7 +5,7 @@
 function out_popup_scenarios_Callback(hObject, eventdata, handles)
 
 globals; 
-
+first_init_globals;
 select_string = get(hObject, 'Value'); 
 all_strings = get(hObject, 'String');
 select_scen = all_strings(select_string, 1); % // Scenario's filename
