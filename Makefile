@@ -11,7 +11,7 @@ LIBS =
 
 CC = gcc
 
-CFLAGS = -Wall
+CFLAGS = -Wall -g3
 
 all: clean note $(OBJS)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJS) $(LIBS) 

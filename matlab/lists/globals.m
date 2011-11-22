@@ -5,6 +5,6 @@ global are_Scenarios % // Есть ли доступные сценарии
 global K I Q InSync SyncFirst SyncLast SyncTemp qcno_ist Desription 
 global A_IQ A_IQ_eff Tc EpsW stdn_IQ
 
-global qcno_est sqrtA_IQ2_est A_IQ_est stdn2_IQ_est
+global qcno_est sqrtA_IQ2_est A_IQ_est stdn2_IQ_est stdn2_IQ_est_shifted
 global sum_counter acum_counter fail_counter allow_stdn2_est
 global R2 R4 R2_acum R4_acum start_counter IQ_Power N_Coher

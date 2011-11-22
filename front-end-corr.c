@@ -53,7 +53,10 @@ int main(void)
     fclose(fid_in);
 
 
-    int x_A2_est[K], x_A_est[K], x_stdn2_est[K], rough_qcno_dBHz[K];
+    int x_A2_est[K], x_A_est[K], x_stdn2_est[K];
+
+    unsigned int* x_stdn2_est_shifted = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    int* rough_qcno_dBHz = (int *)malloc(sizeof(int) * K);
 
     int* sum_counter = (int *)malloc(sizeof(int) * K);
     int* acum_counter = (int *)malloc(sizeof(int) * K);
@@ -94,7 +97,8 @@ int main(void)
 		x_A2_est[k] = PoMe.A_IQ_2_est;
 		x_A_est[k] = PoMe.A_IQ_est;
 		x_stdn2_est[k] = PoMe.stdn_IQ_2_est;
-		rough_qcno_dBHz[k] = PoMe.rough_qcno_dBHz;
+		x_stdn2_est_shifted[k] = PoMe.x_stdn2_est_shifted;
+		rough_qcno_dBHz[k] = (int)PoMe.rough_qcno_dBHz;
 		sum_counter[k] = (int)(PoMe.sum_counter);
 		acum_counter[k] = (int)(PoMe.acum_counter);
 		fail_counter[k] = (int)(PoMe.fail_counter);
@@ -125,12 +129,15 @@ int main(void)
     for (i=0; i<K; i++){
     	fprintf(fid_out, "%u\n", x_A_est[i]);
     }
-    for (i=0; i<K; i++){
+    for (i=0; i<K; i++)
     	fprintf(fid_out, "%u\n", x_stdn2_est[i]);
-    }
-    for (i=0; i<K; i++){
-    	fprintf(fid_out, "%d\n", (int)(rough_qcno_dBHz[i]));
-    }
+
+    for (i=0; i<K; i++)
+    	fprintf(fid_out, "%u\n", x_stdn2_est_shifted[i]);
+
+    for (i=0; i<K; i++)
+    	fprintf(fid_out, "%d\n", rough_qcno_dBHz[i]);
+
     for (i=0; i<K; i++){
     	fprintf(fid_out, "%d\n", sum_counter[i]);
     }
@@ -165,6 +172,9 @@ int main(void)
     	fprintf(fid_out, "%u\n", N_Coher[i]);
     }
 
+
+    free(x_stdn2_est_shifted);
+    free(rough_qcno_dBHz);
 
     free(acum_counter);
     free(sum_counter);

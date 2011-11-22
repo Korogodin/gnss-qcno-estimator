@@ -37,6 +37,8 @@ void InitPowerMeasure(PowerMeasure_struct * PoMe, quint32 Init_qcno)
 
 	PoMe->R2 = 0;
 	PoMe->R4 = 0;
+	PoMe->R2_acum = 0;
+	PoMe->R4_acum = 0;
 
 	PoMe->acum_counter = 0; // Счетчик второго уровня накопителя корреляционных сумм
 	PoMe->sum_counter = 0; // Счетчик первого уровня накопителя корреляционных сумм
@@ -136,7 +138,7 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 		/* Измерение квадрата СКО квадратур */
 		if ( Diskrimi > 0 ) {
 			tmp = sqrt_PoMe(Diskrimi);
-			if (tmp != 0){ // Одна итерация по Герону для увеличения точности до требуемой
+			if (tmp != 0){ // Одна итерация по Герону для увеличения точности до требуемой (доли процента!)
 				tmp += ((int)(Diskrimi) - (int)(tmp*tmp))/2 / (int)(tmp); // Обратное смещение с учетом смещения в корне
 			}
 			tmp <<= (Diskrimi_shift/2);
@@ -180,27 +182,6 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 	PoMe->qcno_dBHz =  10.0*log10(PoMe->qcno);
 	PoMe->qcno_dBHz_extr = PoMe->qcno_dBHz;
 #endif
-
-	//#ifdef __Model
-	//	static FILE* fid_ampout=0;
-	//	if (!fid_ampout)
-	//	{
-	//		fid_ampout = fopen("amp.csv", "wt");
-	// 		fprintf(fid_ampout,"tmp64_1;tmp64_2;tmp64_3;SQ_stdn;Diskrimi;M;SQ_A_izm;x_stdn2_est;x_A2_est[0];qcno_dBHz; rough_qcno_dBHz;\n");
-	//	}
-	//	fprintf(fid_ampout,"%I64u;%I64u;%I64u;%d;%u;%u;%u;%u;%u;%f;%u\n",
-	//						tmp64_1,tmp64_2,tmp64_3,
-	//						SQ_stdn_izm,
-	//						Diskrimi,
-	//						M,
-	//						SQ_A_izm,
-	//						PoMe->x_stdn2_est,
-	//						PoMe->x_A2_est[0],
-	//						10.0*log10( PoMe->x_A2_est[0] / (2.0 * PoMe->x_stdn2_est * 0.001) ),
-	//                        PoMe->rough_qcno_dBHz);
-
-	//	fflush(fid_ampout);
-	//#endif
 }
 
 /**
