@@ -10,7 +10,8 @@ fid = fopen('file_out.csv', 'r');
 
 % K = fscanf(fid, '%u', 1);
 
-sqrtA_IQ2_est = sqrt((fscanf(fid, '%u', K))');
+A_IQ2_est = (fscanf(fid, '%u', K))';
+sqrtA_IQ2_est = sqrt(A_IQ2_est);
 A_IQ_est = (fscanf(fid, '%d', K))';
 plot_A_IQ(handles);
 

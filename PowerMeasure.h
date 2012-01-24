@@ -10,6 +10,8 @@
 для одного корреляционного канала. */
 typedef struct {
 
+	qint32 Icoh, Qcoh; ///< Аккумуляторы для когерентного накопления квадратур
+
 	quint32 x_A2_est[1]; ///< Вектор состояния Ф СС за квадратом амплитуды КК, оценка=экстраполяция
 	quint32 A_IQ_est; ///< Оценка амплитуды 1мс квадратур (уже с учетом U2_SHIFT)
 	quint32 A_IQ_2_est; ///< Оценка квадрата амплитуды 1мс квадратур (уже с учетом U2_SHIFT)
@@ -51,6 +53,8 @@ typedef struct {
 
 	qint8 rough_qcno_dBHz; ///< Грубая оценка отношения сигнал шум с погрешностью "округления" в интервале [0 +3] дБГц
 
+	quint16 sum_counter_max; ///< Число суммирований в первичных аккумуляторах R2, R4
+
 	#if (RECEIVER_TYPE == RECEIVER_ALPACA)
 		/** @name Сохраненные измерения, поступающие на вход фильтров */
 		quint32 SQ_A_izm; ///< Квадрата амплитуды
@@ -65,7 +69,7 @@ typedef struct {
 
 	quint8 N_Coher; ///< Число мс когерентных накоплений
 
-	quint16 sum_counter_max; ///< Число суммирований в первичных аккумуляторах R2, R4
+
 } PowerMeasure_struct; 
 
 
@@ -113,12 +117,12 @@ enum {
 		//@}
 	#elif (RECEIVER_TYPE == RECEIVER_NIIKP_ARM)
 		/** @name Делитель вторичных аккумуляторов для каждого времени накопления, сдвиги */
-		PoMe_Threshold_5_sh = 2, 			// Период: 	2*PoMe_sum_counter_max
+		PoMe_Threshold_5_sh = 1, 			// Период: 	2*PoMe_sum_counter_max
 		PoMe_Threshold_4_sh = 2,			// 		4*PoMe_sum_counter_max
-		PoMe_Threshold_3_sh = 2,			// 		8*PoMe_sum_counter_max
-		PoMe_Threshold_2_sh = 2,			// 		32*PoMe_sum_counter_max
-		PoMe_Threshold_1_sh = 2,			// 		64*PoMe_sum_counter_max
-		PoMe_Threshold_def_sh = 2,			// 		32*PoMe_sum_counter_max
+		PoMe_Threshold_3_sh = 3,			// 		8*PoMe_sum_counter_max
+		PoMe_Threshold_2_sh = 5,			// 		32*PoMe_sum_counter_max
+		PoMe_Threshold_1_sh = 6,			// 		64*PoMe_sum_counter_max
+		PoMe_Threshold_def_sh = 5,			// 		32*PoMe_sum_counter_max
 		//@}
 	#endif
 
