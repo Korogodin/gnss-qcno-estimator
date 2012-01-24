@@ -43,6 +43,7 @@ int main(void)
     int* Q = (int *)malloc(sizeof(int) * K);
     int* SyncTemp = (int *)malloc(sizeof(int) * K);
     int* SyncLast = (int *)malloc(sizeof(int) * K);
+    int* SyncFirst = (int *)malloc(sizeof(int) * K);
 
     int i;
     for (i=0; i<K; i++){
@@ -53,14 +54,19 @@ int main(void)
     	fscanf(fid_in, "%d", &(Q[i]));
 //    	printf("Q[%d] = %d\n", i, Q[i]);
     }
+//    for (i=0; i<K; i++){
+//    	fscanf(fid_in, "%d", &(SyncTemp[i]));
+////    	printf("SyncTemp[%d] = %d\n", i, SyncTemp[i]);
+//    }
+//    for (i=0; i<K; i++){
+//    	fscanf(fid_in, "%d", &(SyncLast[i]));
+////    	printf("SyncLast[%d] = %d\n", i, SyncLast[i]);
+//    }
+
     for (i=0; i<K; i++){
-    	fscanf(fid_in, "%d", &(SyncTemp[i]));
-//    	printf("SyncTemp[%d] = %d\n", i, SyncTemp[i]);
+    	fscanf(fid_in, "%d", &(SyncFirst[i]));
     }
-    for (i=0; i<K; i++){
-    	fscanf(fid_in, "%d", &(SyncLast[i]));
-//    	printf("SyncLast[%d] = %d\n", i, SyncLast[i]);
-    }
+
 
     fclose(fid_in);
 
@@ -76,7 +82,7 @@ int main(void)
     int* fail_counter = (int *)malloc(sizeof(int) * K);
     int* allow_stnd2_est = (int *)malloc(sizeof(int) * K);
 
-    unsigned int* R2 = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    int* R2 = (int *)malloc(sizeof(int) * K);
     unsigned long int* R4 = (unsigned long int *)malloc(sizeof(unsigned long int) * K);
     unsigned int* R2_acum = (unsigned int *)malloc(sizeof(unsigned int) * K);
     unsigned long int* R4_acum = (unsigned long int *)malloc(sizeof(unsigned long int) * K);
@@ -88,40 +94,50 @@ int main(void)
     int k;
     PowerMeasure_struct PoMe;
 
-    InitPowerMeasure(&(PoMe), 0);
-    unsigned int U2;
-    unsigned int nN = 1;
+    SetModePowerMeasure(&(PoMe), PoMeMode_no_SS);
+
+    PoMe.A_IQ_2_est = 0;
+	PoMe.A_IQ_est = 0;
+	PoMe.stdn_IQ_2_est = 0;
     for (k=0; k<K; k++){
+
+    	if (PoMe.ModeNow != PoMeMode_no_SS)
+			if (SyncFirst[k]){ // Копить нужно синхронно тактам ЦИ
+				PoMe.First_sample_of_bit = 1;
+				PoMe.Icoh = 0; PoMe.Qcoh = 0;
+				PoMe.n_Coher = 1;
+			}
+
     	PoMe.Icoh += I[k];
     	PoMe.Qcoh += Q[k];
-//    	if (nN == PoMe.N_Coher){
-		if (SyncLast[k]){
-    		U2 = PoMe.Icoh*PoMe.Icoh + PoMe.Qcoh*PoMe.Qcoh;
-    		U2 >>= U2_SHIFT;
-    		U2 /= PoMe.N_Coher; // Для сохранения квадрата
-			AccumPowerMeasure(&(PoMe), U2);
-			if (PoMe.Accumulators_are_ready != 0)
-				DoPowerMeasure(&(PoMe));
-			nN = 0;
-			PoMe.Icoh = 0;
-			PoMe.Qcoh = 0;
-    	}
-    	nN++;
+
+    	if (PoMe.n_Coher == PoMe.N_Coher){
+    		NocohAccumPowerMeasure(&(PoMe));
+    		PoMe.First_sample_of_bit = 0;
+    		PoMe.Icoh = 0;
+    		PoMe.Qcoh = 0;
+	    	PoMe.n_Coher = 0;
+		}
+    	PoMe.n_Coher++;
+
+//			if (PoMe.New_measures_are_ready != 0)
+//				Calc qcno; do control events
+
 		x_A2_est[k] = PoMe.A_IQ_2_est;
 		x_A_est[k] = PoMe.A_IQ_est;
 		x_stdn2_est[k] = PoMe.stdn_IQ_2_est;
-		x_stdn2_est_shifted[k] = PoMe.x_stdn2_est_shifted;
-		rough_qcno_dBHz[k] = (int)PoMe.rough_qcno_dBHz;
-		sum_counter[k] = (int)(PoMe.sum_counter);
-		acum_counter[k] = (int)(PoMe.acum_counter);
-		fail_counter[k] = (int)(PoMe.fail_counter);
-		allow_stnd2_est[k] = (int)(PoMe.allow_stnd2_est);
-		R2[k] = PoMe.R2;
-		R4[k] = PoMe.R4;
-		R2_acum[k] = PoMe.R2_acum;
-		R4_acum[k] = PoMe.R4_acum;
-		start_counter[k] = PoMe.start_counter;
-		IQ_Power[k] = PoMe.IQ_Power;
+		//		x_stdn2_est_shifted[k] = PoMe.x_stdn2_est_shifted;
+		//		rough_qcno_dBHz[k] = (int)PoMe.rough_qcno_dBHz;
+				sum_counter[k] = (int)(PoMe.sum_counter);
+		//		acum_counter[k] = (int)(PoMe.acum_counter);
+		//		fail_counter[k] = (int)(PoMe.fail_counter);
+		//		allow_stnd2_est[k] = (int)(PoMe.allow_stnd2_est);
+				R2[k] = PoMe.R2;
+		//		R4[k] = PoMe.R4;
+		//		R2_acum[k] = PoMe.R2_acum;
+		//		R4_acum[k] = PoMe.R4_acum;
+		//		start_counter[k] = PoMe.start_counter;
+		//		IQ_Power[k] = PoMe.IQ_Power;
 		N_Coher[k] = PoMe.N_Coher;
     }
 
@@ -164,7 +180,7 @@ int main(void)
     	fprintf(fid_out, "%d\n", allow_stnd2_est[i]);
     }
     for (i=0; i<K; i++){
-    	fprintf(fid_out, "%u\n", R2[i]);
+    	fprintf(fid_out, "%d\n", R2[i]);
     }
     for (i=0; i<K; i++){
     	fprintf(fid_out, "%ul\n", R4[i]);

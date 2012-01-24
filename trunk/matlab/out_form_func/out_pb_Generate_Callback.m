@@ -21,16 +21,22 @@ for k = 1:K
         fprintf('Generate progress I,Q %.0f%%\n', round(k/K*50) + 50);
     end
 end
+% for k = 1:K
+%     fprintf(fid, '%d\n', SyncTemp(k));
+%     if ~mod(k, fix(K/10))
+%         fprintf('Generate progress SyncTemp %.0f%%\n', round(k/K*100));
+%     end
+% end
+% for k = 1:K
+%     fprintf(fid, '%d\n', SyncLast(k));
+%     if ~mod(k, fix(K/10))
+%         fprintf('Generate progress SyncLast %.0f%%\n', round(k/K*100));
+%     end
+% end
 for k = 1:K
-    fprintf(fid, '%d\n', SyncTemp(k));
+    fprintf(fid, '%d\n', SyncFirst(k));
     if ~mod(k, fix(K/10))
-        fprintf('Generate progress SyncTemp %.0f%%\n', round(k/K*100));
-    end
-end
-for k = 1:K
-    fprintf(fid, '%d\n', SyncLast(k));
-    if ~mod(k, fix(K/10))
-        fprintf('Generate progress SyncLast %.0f%%\n', round(k/K*100));
+        fprintf('Generate progress SyncFirst %.0f%%\n', round(k/K*100));
     end
 end
 
