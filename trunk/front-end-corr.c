@@ -38,8 +38,12 @@ int main(void)
     fscanf(fid_in, "%d", &K);
 
     // Чтение I,Q из файла
-    int I[K];
-    int Q[K];
+
+    int* I = (int *)malloc(sizeof(int) * K);
+    int* Q = (int *)malloc(sizeof(int) * K);
+    int* SyncTemp = (int *)malloc(sizeof(int) * K);
+    int* SyncLast = (int *)malloc(sizeof(int) * K);
+
     int i;
     for (i=0; i<K; i++){
     	fscanf(fid_in, "%d", &(I[i]));
@@ -49,12 +53,21 @@ int main(void)
     	fscanf(fid_in, "%d", &(Q[i]));
 //    	printf("Q[%d] = %d\n", i, Q[i]);
     }
+    for (i=0; i<K; i++){
+    	fscanf(fid_in, "%d", &(SyncTemp[i]));
+//    	printf("SyncTemp[%d] = %d\n", i, SyncTemp[i]);
+    }
+    for (i=0; i<K; i++){
+    	fscanf(fid_in, "%d", &(SyncLast[i]));
+//    	printf("SyncLast[%d] = %d\n", i, SyncLast[i]);
+    }
 
     fclose(fid_in);
 
 
-    int x_A2_est[K], x_A_est[K], x_stdn2_est[K];
-
+    unsigned int* x_A2_est = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    unsigned int* x_A_est = (unsigned int *)malloc(sizeof(unsigned int) * K);
+    unsigned int* x_stdn2_est = (unsigned int *)malloc(sizeof(unsigned int) * K);
     unsigned int* x_stdn2_est_shifted = (unsigned int *)malloc(sizeof(unsigned int) * K);
     int* rough_qcno_dBHz = (int *)malloc(sizeof(int) * K);
 
@@ -78,20 +91,20 @@ int main(void)
     InitPowerMeasure(&(PoMe), 0);
     unsigned int U2;
     unsigned int nN = 1;
-    int Icoh = 0, Qcoh = 0;
     for (k=0; k<K; k++){
-    	Icoh = Icoh + I[k];
-    	Qcoh = Qcoh + Q[k];
-    	if (nN == PoMe.N_Coher){
-    		U2 = Icoh*Icoh + Qcoh*Qcoh;
+    	PoMe.Icoh += I[k];
+    	PoMe.Qcoh += Q[k];
+//    	if (nN == PoMe.N_Coher){
+		if (SyncLast[k]){
+    		U2 = PoMe.Icoh*PoMe.Icoh + PoMe.Qcoh*PoMe.Qcoh;
     		U2 >>= U2_SHIFT;
     		U2 /= PoMe.N_Coher; // Для сохранения квадрата
 			AccumPowerMeasure(&(PoMe), U2);
 			if (PoMe.Accumulators_are_ready != 0)
 				DoPowerMeasure(&(PoMe));
 			nN = 0;
-			Icoh = 0;
-			Qcoh = 0;
+			PoMe.Icoh = 0;
+			PoMe.Qcoh = 0;
     	}
     	nN++;
 		x_A2_est[k] = PoMe.A_IQ_2_est;
@@ -172,6 +185,14 @@ int main(void)
     	fprintf(fid_out, "%u\n", N_Coher[i]);
     }
 
+    free( I );
+    free( Q );
+    free( SyncTemp );
+    free( SyncLast );
+
+	free(x_A2_est);
+	free(x_A_est);
+	free(x_stdn2_est);
 
     free(x_stdn2_est_shifted);
     free(rough_qcno_dBHz);

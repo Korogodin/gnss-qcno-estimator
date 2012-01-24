@@ -35,6 +35,9 @@ void InitPowerMeasure(PowerMeasure_struct * PoMe, quint32 Init_qcno)
 	PoMe->x_stdn2_est_shifted = (PoMe->x_stdn2_est << PoMe_x_stdn2_shift);
 	PoMe->allow_stnd2_est = 1; // Разрешить оценивать и фильтровать дисперсию квадратур
 
+	PoMe->Icoh = 0; //< Аккумуляторы для когерентного накопления квадратур
+	PoMe->Qcoh = 0;
+
 	PoMe->R2 = 0;
 	PoMe->R4 = 0;
 	PoMe->R2_acum = 0;
@@ -54,7 +57,7 @@ void InitPowerMeasure(PowerMeasure_struct * PoMe, quint32 Init_qcno)
 
 	PoMe->acum_threshold_lock = 0;
 
-	PoMe->N_Coher = 20;
+	PoMe->N_Coher = 1;
 
 #if (RECEIVER_TYPE == RECEIVER_ALPACA)
 	if (Init_qcno > 0)
@@ -165,7 +168,7 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 		}
 		else { // После выжидания start_delay расширяем фильтр и быстро подстраиваемся
 			PoMe->start_counter++;
-			PoMe->x_stdn2_est_shifted += Ud_stdn >> NearestPower2(PoMe->start_counter - start_delay);
+			PoMe->x_stdn2_est_shifted += Ud_stdn >> (NearestPower2(PoMe->start_counter - start_delay) + 4);
 		}
 		PoMe->x_stdn2_est = PoMe->x_stdn2_est_shifted>>PoMe_x_stdn2_shift;
 		/***/
@@ -173,7 +176,7 @@ void DoPowerMeasure(PowerMeasure_struct *PoMe)
 	} // if (PoMe->allow_stnd2_est == 1)
 
 	CalcTrueValues_PowerMeasure(PoMe); // Учет U2_SHIFT
-	RoughCalc_qcno_dBHz_PowerMeasure(PoMe);// Грубое вычисление отношения с/ш
+	RoughCalc_qcno_dBHz_PowerMeasure(PoMe); // Грубое вычисление отношения с/ш
 
 #if (RECEIVER_TYPE == RECEIVER_ALPACA)
 	PoMe->SQ_A_izm = SQ_A_izm;
@@ -402,15 +405,6 @@ void RoughCalc_qcno_dBHz_PowerMeasure(PowerMeasure_struct *PoMe){
 	int tmp;
 	tmp = __CLZ(PoMe->stdn_IQ_2_est) - __CLZ(PoMe->A_IQ_2_est); // "На сколько по 3дБ амплитуда2 больше СКО2"
 	PoMe->rough_qcno_dBHz = 27 + 3*tmp; // При 27 дБГц амплитуда и СКО квадратур практически равны
-//	switch (PoMe->N_Coher){
-//	case 1:
-//		break;
-//	case 20:
-////		PoMe->rough_qcno_dBHz -= 13;
-//	    break;
-//	default:
-//		break;
-//	}
 }
 
 
@@ -526,7 +520,13 @@ quint32 NearestPower2(quint32 x){//// Ближайшее большее или �
 */
 void CalcTrueValues_PowerMeasure(PowerMeasure_struct *PoMe){
 
-	PoMe->A_IQ_2_est = (PoMe->x_A2_est[0] << U2_SHIFT)/ PoMe->N_Coher;
+	unsigned int temp;
+
+	temp = PoMe->x_A2_est[0] << U2_SHIFT;
+	if (temp > PoMe->x_A2_est[0])
+		PoMe->A_IQ_2_est = temp/ PoMe->N_Coher;
+	else
+		PoMe->A_IQ_2_est = (PoMe->x_A2_est[0] / PoMe->N_Coher) << U2_SHIFT;
 //	PoMe->A_IQ_2_est = (PoMe->x_A2_est[0] << U2_SHIFT);
 	PoMe->A_IQ_est = sqrt_PoMe( PoMe->A_IQ_2_est );
 	PoMe->stdn_IQ_2_est = PoMe->x_stdn2_est << U2_SHIFT;

@@ -3,14 +3,14 @@
 %*/
 
 Description = ...
-    'Сценарий работы системы частотной автоподстройки при qcno 45 дБГц, а stdn_IQ=8, период накопления в корреляторах 1 мс, символьная синхронизация есть с темпом 20 мс, полоса ЧАП 0.1Гц';
-filename = 'FLL01Hz-45dBHz-stdnIQ_8-T_1ms-Sync20.mat';
-disp('gen_core_fll_01Hz_const_q started');
+    'Проверка переходного процесса';
+filename = 'FLL3Hz-test.mat';
+disp('gen_core_fll_3Hz_test started');
 
 global TauChip; 
 TauChip = 300;
 
-Tmod = 300; % Время моделирования
+Tmod = 150; % Время моделирования
 Tf = 0.001; % Период работы фильтров 
 Tc = 0.001; % Период интегрирования в корреляторе
 K = fix(Tmod/Tc); 
@@ -19,9 +19,9 @@ Fd = 44.2e6;
 L = round(Fd*Tc);
 
 qcno_ist = 45*ones(1,K); % // SNR
-% qcno_ist = 55*(ones(1,K)); % // SNR
+% qcno_ist = 45*(ones(1,K) - (1:K)/K); % // SNR
 
-H = 0.1; % Hz, полоса
+H = 3; % Hz, полоса
 
 Xextr = [0; 0; 0]; % Вектор экстраполяций
 
@@ -44,7 +44,7 @@ Ko(1) = 0;
 
 Ko = Ko*Tf; % Переход к коэффициентам дискретной системы
 
-Xist = [0; 100; 0]; % Истинный вектор состояния
+Xist = [0; 2*pi*10; 0]; % Истинный вектор состояния
 stdIst = 0; nIst = randn(1,K); 
 
 stdn_IQ = ones(1,K)*8; %*sqrt(L/2);
@@ -60,22 +60,11 @@ EpsW = nan(1, K);
 EpsTau = nan(1, K);
 Ud = nan(1, K);
 
-SyncFirst = zeros(1,K);
-SyncLast = zeros(1,K);
-
 nI = stdn_IQ.*randn(1,K); % // I-comp noise
 nQ = stdn_IQ.*randn(1,K); % // Q-comp noise
 
-K_sym = 20;
-SyncTemp = K_sym*ones(1,K);
-InSync = ones(1,K);
-k_sym = fix(rand(1,1)*K_sym);
-
 w = 0;
 for k = 1:K
-    k_sym = mod(k_sym + 1, K_sym);
-    SyncLast(k) = (k_sym == 0);
-    SyncFirst(k) = (k_sym == 1);
     
     EpsPhi(k) = mod(Xist(1) - Xextr(1),2*pi);
     EpsW(k) = Xist(2) - Xextr(2);
@@ -97,6 +86,7 @@ for k = 1:K
     %     Sd = f(A_IQ);             % Критизна дискриминационной характеристики
         Sd = Tc*A_IQ(k)^2;
         Xest = Xextr + Ko*Ud(k)/Sd;    % Вектор оценок на очередной интервал фильтра
+%         Xest = Xextr + Ko*(Xist(2)-Xextr(2));
         Xextr = Ff*Xest;            % Экстраполяция на следующий интервал
         w = 0;
     end
@@ -113,9 +103,14 @@ Q = round(Q);
 
 A_IQ_eff = abs(A_IQ_eff);
 
-save([pwd  '/matlab/scenarios/' filename], 'K', 'I', 'Q', 'InSync', ...
-    'SyncFirst', 'SyncLast', 'SyncTemp', 'qcno_ist', 'Description', ...
-    'EpsW', 'A_IQ', 'A_IQ_eff', 'Tc', 'Tf', 'stdn_IQ', 'H');
+InSync = zeros(1,K);
+SyncFirst = zeros(1,K);
+SyncLast = zeros(1,K);
+SyncTemp = zeros(1,K);
+
+% save([pwd  '/matlab/scenarios/' filename], 'K', 'I', 'Q', 'InSync', ...
+%     'SyncFirst', 'SyncLast', 'SyncTemp', 'qcno_ist', 'Description', ...
+%     'EpsW', 'A_IQ', 'A_IQ_eff', 'Tc', 'Tf', 'stdn_IQ', 'H');
 
 hF = 100;
 
@@ -133,3 +128,13 @@ hF = figure(hF + 1);
 plot(1:K, EpsW);
 xlabel('k');
 ylabel('EpsW')
+grid on
+
+hF = figure(hF + 1);
+K1 = length(EpsW(3000:end));
+ff_dop = (-(K1/2 - 1):1:K1/2)/(Tc)/K1;  % Ось частот для дополненной АКФ
+plot(ff_dop, abs(fftshift((fft(EpsW(3000:end))))))
+grid on
+xlabel('f, Hz')
+ylabel('fft Eps')
+grid on

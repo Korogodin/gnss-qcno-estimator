@@ -3,9 +3,9 @@
 %*/
 
 Description = ...
-    'Сценарий работы системы частотной автоподстройки при qcno 45 дБГц, а stdn_IQ=8, период накопления в корреляторах 1 мс, символьная синхронизация есть с темпом 20 мс, полоса ЧАП 0.1Гц';
-filename = 'FLL01Hz-45dBHz-stdnIQ_8-T_1ms-Sync20.mat';
-disp('gen_core_fll_01Hz_const_q started');
+    'Сценарий работы при qcno 25 дБГц и нулевой ошибке по частоте, а stdn_IQ=8, период накопления в корреляторах 1 мс, символьная синхронизация есть с темпом 1 мс';
+filename = 'ConstEps-25dBHz-stdnIQ_8-T_1ms-Sync1.mat';
+disp('gen_core_const_Eps_const_q started');
 
 global TauChip; 
 TauChip = 300;
@@ -18,8 +18,8 @@ K = fix(Tmod/Tc);
 Fd = 44.2e6;
 L = round(Fd*Tc);
 
-qcno_ist = 45*ones(1,K); % // SNR
-% qcno_ist = 55*(ones(1,K)); % // SNR
+% qcno_ist = 45*ones(1,K); % // SNR
+qcno_ist = 25*(ones(1,K)); % // SNR
 
 H = 0.1; % Hz, полоса
 
@@ -66,7 +66,7 @@ SyncLast = zeros(1,K);
 nI = stdn_IQ.*randn(1,K); % // I-comp noise
 nQ = stdn_IQ.*randn(1,K); % // Q-comp noise
 
-K_sym = 20;
+K_sym = 1;
 SyncTemp = K_sym*ones(1,K);
 InSync = ones(1,K);
 k_sym = fix(rand(1,1)*K_sym);
@@ -85,8 +85,8 @@ for k = 1:K
     A_IQ_eff(k) = A_IQ(k)*sinc(EpsW(k)*Tc/2 /pi)*ro(EpsTau(k));
     mI = A_IQ_eff(k) * cos(EpsW(k)*Tc/2 + EpsPhi(k));
     mQ = - A_IQ_eff(k) * sin(EpsW(k)*Tc/2 + EpsPhi(k));
-    I(k) = mI + nI(k);
-    Q(k) = mQ + nQ(k);
+    I(k) = mI + (k<(4*K/3))*nI(k);
+    Q(k) = mQ + (k<(4*K/3))*nQ(k);
     
     Xextr = Fincorr * Xextr; % Набег фазы в корреляторе к концу накопления    
 
@@ -102,6 +102,8 @@ for k = 1:K
     end
 
     Xist = Fc*Xist + [0; 0; 1]*nIst(k)*stdIst; % Здесь может быть любая другая модель изменения истинного вектора состояния
+    Xextr(2) = Xist(2);
+    Xextr(3) = Xist(3);
     if ~mod(k,fix(K/10))
         fprintf('Progress: %.0f%%\n', 100*k/K);
     end
