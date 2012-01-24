@@ -34,7 +34,7 @@ plot_fail_counter(handles);
 allow_stdn2_est = (fscanf(fid, '%d', K))';
 plot_allow_stdn2_est(handles);
 
-R2 = (fscanf(fid, '%u', K))';
+R2 = (fscanf(fid, '%d', K))';
 plot_R2(handles);
 
 R4 = (fscanf(fid, '%ul', K))';
