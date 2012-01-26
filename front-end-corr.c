@@ -5,7 +5,6 @@
 
 #include "PowerMeasure.h"
 
-#if (RECEIVER_TYPE == RECEIVER_NIIKP_ARM)
 /**
 Возвращает число подряд идущих нулевых разрядов слева в бинарном представлении 32-разрядного числа.
 Например, для x=b'00000111 вернет 29.
@@ -21,7 +20,6 @@ int __CLZ(int x){
   }
   return 32;
 }
-#endif
 
 int main(void)
 {
@@ -94,45 +92,36 @@ int main(void)
     int k;
     PowerMeasure_struct PoMe;
 
+//    SetModePowerMeasure(&(PoMe), PoMeMode_20ms);
     SetModePowerMeasure(&(PoMe), PoMeMode_no_SS);
+//    SetModePowerMeasure(&(PoMe), PoMeMode_20ms_4ms);
+    SetVariancePowerMeasure(&(PoMe), 64);
 
     PoMe.A_IQ_2_est = 0;
-	PoMe.A_IQ_est = 0;
-	PoMe.stdn_IQ_2_est = 0;
+//	PoMe.A_IQ_est = 0;
     for (k=0; k<K; k++){
 
-    	if (PoMe.ModeNow != PoMeMode_no_SS)
-			if (SyncFirst[k]){ // Копить нужно синхронно тактам ЦИ
-				PoMe.First_sample_of_bit = 1;
-				PoMe.Icoh = 0; PoMe.Qcoh = 0;
-				PoMe.n_Coher = 1;
-			}
+    	CohAccumPowerMeasure(&(PoMe), I[k], Q[k], SyncFirst[k]);
 
-    	PoMe.Icoh += I[k];
-    	PoMe.Qcoh += Q[k];
+		if (PoMe.New_measurements_are_ready != 0){
+			PoMe.New_measurements_are_ready = 0;
 
-    	if (PoMe.n_Coher == PoMe.N_Coher){
-    		NocohAccumPowerMeasure(&(PoMe));
-    		PoMe.First_sample_of_bit = 0;
-    		PoMe.Icoh = 0;
-    		PoMe.Qcoh = 0;
-	    	PoMe.n_Coher = 0;
+//			Calc_A_PowerMeasure(&(PoMe));
+			Calc_Q_PowerMeasure(&(PoMe));
 		}
-    	PoMe.n_Coher++;
-
-//			if (PoMe.New_measures_are_ready != 0)
-//				Calc qcno; do control events
+//
 
 		x_A2_est[k] = PoMe.A_IQ_2_est;
-		x_A_est[k] = PoMe.A_IQ_est;
+//		A_IQ_2_est[k] = PoMe.A_IQ_2_est;
+//		x_A_est[k] = PoMe.A_IQ_est;
 		x_stdn2_est[k] = PoMe.stdn_IQ_2_est;
 		//		x_stdn2_est_shifted[k] = PoMe.x_stdn2_est_shifted;
-		//		rough_qcno_dBHz[k] = (int)PoMe.rough_qcno_dBHz;
-				sum_counter[k] = (int)(PoMe.sum_counter);
+		rough_qcno_dBHz[k] = (int)PoMe.rough_qcno_dBHz;
+		sum_counter[k] = (int)(PoMe.sum_counter);
 		//		acum_counter[k] = (int)(PoMe.acum_counter);
 		//		fail_counter[k] = (int)(PoMe.fail_counter);
 		//		allow_stnd2_est[k] = (int)(PoMe.allow_stnd2_est);
-				R2[k] = PoMe.R2;
+		R2[k] = PoMe.R2;
 		//		R4[k] = PoMe.R4;
 		//		R2_acum[k] = PoMe.R2_acum;
 		//		R4_acum[k] = PoMe.R4_acum;
