@@ -4,7 +4,7 @@
 #define POWERMEASURETB_H_
 
 
-#define POME_TESTBENCH
+
 
 
 #define RECEIVER_ALPACA  1 // Альпака

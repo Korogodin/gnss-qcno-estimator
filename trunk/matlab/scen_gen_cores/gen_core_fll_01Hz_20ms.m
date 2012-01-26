@@ -3,9 +3,9 @@
 %*/
 
 Description = ...
-    'Сценарий работы системы частотной автоподстройки при qcno 45 дБГц, а stdn_IQ=8, период накопления в корреляторах 1 мс, символьная синхронизация есть с темпом 20 мс, полоса ЧАП 0.1Гц';
-filename = 'FLL01Hz-45dBHz-stdnIQ_8-T_1ms-Sync20.mat';
-disp('gen_core_fll_01Hz_const_q started');
+    'Сценарий работы системы частотной автоподстройки при qcno от 55 до 0 дБГц, а stdn_IQ=8, период накопления в корреляторах 1 мс, символьная синхронизация есть, полоса ЧАП 0.1Гц';
+filename = 'FLL01Hz-55to0dBHz-stdnIQ_8-T_1ms-Sync20.mat';
+disp('gen_core_fll_01Hz_20ms started');
 
 global TauChip; 
 TauChip = 300;
@@ -18,8 +18,8 @@ K = fix(Tmod/Tc);
 Fd = 44.2e6;
 L = round(Fd*Tc);
 
-qcno_ist = 45*ones(1,K); % // SNR
-% qcno_ist = 55*(ones(1,K)); % // SNR
+% qcno_ist = 45*ones(1,K); % // SNR
+qcno_ist = 55*(ones(1,K) - (1:K)/K); % // SNR
 
 H = 0.1; % Hz, полоса
 
@@ -60,9 +60,6 @@ EpsW = nan(1, K);
 EpsTau = nan(1, K);
 Ud = nan(1, K);
 
-SyncFirst = zeros(1,K);
-SyncLast = zeros(1,K);
-
 nI = stdn_IQ.*randn(1,K); % // I-comp noise
 nQ = stdn_IQ.*randn(1,K); % // Q-comp noise
 
@@ -76,11 +73,11 @@ w = 0;
 for k = 1:K
     k_sym = mod(k_sym + 1, K_sym);
     SyncLast(k) = (k_sym == 0);
-    SyncFirst(k) = (k_sym == 1);
+    SyncFirst(k) = (k_sym == 1);    
     
     if SyncFirst(k)
         Gns = 1 - 2*(randn(1,1)>0);
-    end
+    end    
     
     EpsPhi(k) = mod(Xist(1) - Xextr(1),2*pi);
     EpsW(k) = Xist(2) - Xextr(2);
