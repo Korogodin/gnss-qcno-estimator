@@ -9,8 +9,6 @@
 #endif
 
 quint32 sqrt_PoMe(quint32 x);
-quint32 NearestPower2(quint32 x); // Ближайщее большее 2^n, возвращаем n
-//void RoughCalc_qcno_dBHz_PowerMeasure(PowerMeasure_struct *PoMe);
 
 /**
 Производит необходимые когерентные накопления отсчетов, после чего вызывает
@@ -86,8 +84,17 @@ void NocohAccumPowerMeasure(PowerMeasure_struct *PoMe){
 				}else
 					tempA2 = 0;
 
-				PoMe->x_A2_est = tempA2; // Данный функция может попасть в низкоприоритетные задачи
-				PoMe->A_IQ_2_est = PoMe->x_A2_est >> PoMe->x_A2_shift;
+				if (tempA2>0){
+					PoMe->x_A2_est = tempA2; // Данный функция может попасть в низкоприоритетные задачи
+					PoMe->fail_counter = 0;
+				}else{
+					if ((PoMe->x_A2_est>>PoMe->x_A2_shift) > (PoMe->stdn_IQ_2_est>>2))
+						PoMe->x_A2_est = PoMe->stdn_IQ_2_est<<(PoMe->x_A2_shift-3);
+					else
+						PoMe->x_A2_est /= 2;
+					PoMe->fail_counter++;
+				}
+//				PoMe->A_IQ_2_est = PoMe->x_A2_est >> PoMe->x_A2_shift;
 
 				PoMe->New_measurements_are_ready = 1; // Флаг, что есть неучтенные новые измерения
 

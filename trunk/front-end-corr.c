@@ -97,7 +97,7 @@ int main(void)
 //    SetModePowerMeasure(&(PoMe), PoMeMode_20ms_4ms);
     SetVariancePowerMeasure(&(PoMe), 64);
 
-    PoMe.A_IQ_2_est = 0;
+    PoMe.x_A2_est = 0;
 //	PoMe.A_IQ_est = 0;
     for (k=0; k<K; k++){
 
@@ -111,7 +111,7 @@ int main(void)
 		}
 //
 
-		x_A2_est[k] = PoMe.A_IQ_2_est;
+		x_A2_est[k] = PoMe.x_A2_est>>PoMe.x_A2_shift; // PoMe.A_IQ_2_est;
 //		A_IQ_2_est[k] = PoMe.A_IQ_2_est;
 //		x_A_est[k] = PoMe.A_IQ_est;
 		x_stdn2_est[k] = PoMe.stdn_IQ_2_est;
